@@ -1,4 +1,5 @@
-
+import os
+import sys
 import requests
 import datetime
 from requests_html import HTML
@@ -7,6 +8,7 @@ import pandas as pd
 now = datetime.datetime.now()
 year = now.year 
 url = "https://www.boxofficemojo.com/year/world/"
+BASE_DIR = os.path.dirname(__file__)
 
 #saving the data from the website
 def url_to_file(url,filename='world',save=False):
@@ -18,7 +20,10 @@ def url_to_file(url,filename='world',save=False):
         return r.text
     return None        
 def parse_and_extract(url,name):
-    r_text = url_to_file(url+'/'+f'{name}') #r_text is a string 
+    new_url = os.path.join(url,f'{name}')
+    r_text = url_to_file(new_url) #r_text is a string 
+    if r_text is None:
+        return False
     html_text = HTML(html=r_text) #html_text is now a html object
 
     table_class = html_text.find('.imdb-scroll-table')
@@ -27,7 +32,7 @@ def parse_and_extract(url,name):
 
     header = rows[0]
     header_names = [col.text for col in header.find("th")]
-    print(header_names)
+    # print(header_names)
 
     #final table = list of lists
     table = []
@@ -38,8 +43,31 @@ def parse_and_extract(url,name):
     # print(header.text)
     # for row in table:
     #     print(*row)
-
+    path = os.path.join(BASE_DIR,'data')
+    os.makedirs(path,exist_ok=True) 
+    filepath = os.path.join(path,f'{name}.csv')
     df = pd.DataFrame(table,columns=header_names)
-    df.to_csv(f'data/{name}.csv',index=False)
+    df.to_csv(filepath,index=False)
+    return True
 
-parse_and_extract(url,2016)
+def run(start_year=year,years=1):
+    for x in range(years):
+        year = start_year - x 
+        finished =  parse_and_extract(url,year)
+        if finished:
+            print(f'{year} ','finished')
+        else:
+            print(f'{year} ','not finished')
+
+if __name__ == '__main__':
+    now = datetime.datetime.now()
+    start_year,years = 2011,5 
+    try:
+        start_year = int(sys.argv[1])
+    except:
+        start_year = now.year
+    try:
+        years = int(sys.argv[2])
+    except:
+        years = 1
+    run(start_year,years)
